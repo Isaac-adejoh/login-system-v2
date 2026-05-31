@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: login-system
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: ADMIN_SECRET_KEY
+        value: mypassword123
+      - key: FIXED_2FA_CODE
+        value: 123456
+      - key: MONGO_URI
+        value: mongodb+srv://admin:admin@cluster0.fahvkmg.mongodb.net/login-system?retryWrites=true&w=majority&appName=Cluster0
+    healthCheckPath: /api/health
